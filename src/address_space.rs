@@ -1,9 +1,11 @@
-use std::collections::LinkedList;
+use linked_list::LinkedList;
 use std::sync::Arc;
 
 use crate::data_source::DataSource;
 
 type VirtualAddress = usize;
+
+pub const PAGE_SIZE: usize = 4096;
 
 struct MapEntry {
     source: Arc<dyn DataSource>,
@@ -42,27 +44,98 @@ impl AddressSpace {
     ///
     /// # Errors
     /// If the desired mapping is invalid.
-    pub fn add_mapping<D: DataSource>(
-        &self,
-        source: &D,
+    pub fn add_mapping<D: DataSource + 'static>(
+        &mut self,
+        source: Arc<D>,
         offset: usize,
         span: usize,
     ) -> Result<VirtualAddress, &str> {
-        todo!()
+        let mut curs = self.mappings.cursor();
+        while curs.peek_next().is_some() {
+          let last_ending: usize = if curs.peek_prev().is_some() {
+            let entry = curs.peek_prev().expect("Bad things are happening.");
+            entry.addr + entry.span
+          } else {
+            0
+          };
+          let next_mapping = curs.peek_next().expect("Bad things are happening.");
+          if next_mapping.addr - last_ending <= span {
+            break;
+          }
+          curs.next();
+        }
+        let next_addr: usize = if curs.peek_next().is_some() {
+          let entry = curs.peek_next().expect("Bad things are happening.");
+          entry.addr
+        } else {
+          0 // What is the size of the address space? Max usize? 
+        };
+        let last_ending: usize = if curs.peek_prev().is_some() {
+          let entry = curs.peek_prev().expect("Bad things are happening.");
+          entry.addr + entry.span
+        } else {
+          0
+        };
+        if next_addr.wrapping_sub(last_ending) >= span + 2 * PAGE_SIZE || last_ending == 0 {
+          // next_addr >= last_ending except in the case where next_addr = 0
+          let address = MapEntry {
+            source: source.clone(),
+            offset: offset,
+            span: span,
+            addr: last_ending + PAGE_SIZE,
+          };
+          curs.insert(address);
+          Ok(last_ending + PAGE_SIZE)
+        } else {
+          Err("No memory chunk available. Ended with between addresses {last_ending} and {next_addr}")
+        }
     }
 
     /// Add a mapping from `DataSource` into this `AddressSpace` starting at a specific address.
     ///
     /// # Errors
     /// If there is insufficient room subsequent to `start`.
-    pub fn add_mapping_at<D: DataSource>(
-        &self,
-        source: &D,
+    pub fn add_mapping_at<D: DataSource + 'static>(
+        &mut self,
+        source: Arc<D>,
         offset: usize,
         span: usize,
         start: VirtualAddress,
     ) -> Result<(), &str> {
-        todo!()
+        let mut curs = self.mappings.cursor();
+        while curs.peek_next().is_some() {
+          let last_start: usize = if curs.peek_prev().is_some() {
+            let entry = curs.peek_prev().expect("Bad things are happening.");
+            entry.addr
+          } else {
+            0
+          };
+          let next_mapping = curs.peek_next().expect("Bad things are happening.");
+          if next_mapping.addr > start && last_start < start {
+            break;
+          }
+          curs.next();
+        }
+        let next_start = match curs.peek_next() {
+          Some(x) => x.addr,
+          None => 0,
+        };
+        let prev_end = match curs.peek_prev() {
+          Some(x) => x.addr + x.span,
+          None => 0,
+        };
+        if prev_end >= start - PAGE_SIZE || (next_start < start + span + PAGE_SIZE && next_start != 0) {
+          Err("Insufficient free memory in desired region.")
+        } else {
+          let new_map = MapEntry {
+            source: source.clone(),
+            offset: offset,
+            span: span,
+            addr: start,
+          };
+          curs.insert(new_map);
+          Ok(())
+        }
     }
 
     /// Remove the mapping to `DataSource` that starts at the given address.
@@ -218,4 +291,3 @@ impl FlagBuilder {
         }
     }
 }
-

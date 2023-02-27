@@ -143,11 +143,29 @@ impl AddressSpace {
     /// # Errors
     /// If the mapping could not be removed.
     pub fn remove_mapping<D: DataSource>(
-        &self,
-        source: &D,
+        &mut self,
+        source: Arc<D>,
         start: VirtualAddress,
     ) -> Result<(), &str> {
-        todo!()
+        let mut curs = self.mappings.cursor();
+        while curs.peek_next().is_some() {
+          let next_mapping = curs.peek_next().expect("Bad things are happening.");
+          if next_mapping.addr == start {
+            break;
+          }
+          curs.next();
+        }
+        let mapping = curs.peek_next();
+        if mapping.is_none() {
+          Err("No mapping with target address.")
+        } else {
+          if mapping.unwrap().addr != start {
+            Err("No mapping with target address.")
+          } else {
+            curs.remove();
+            Ok(()) //Do we have to drop a reference??
+          }
+        }
     }
 
     /// Look up the DataSource and offset within that DataSource for a

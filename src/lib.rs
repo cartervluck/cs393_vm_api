@@ -6,7 +6,7 @@ mod address_space;
 mod cacher;
 mod data_source;
 
-pub use address_space::AddressSpace;
+pub use address_space::{AddressSpace, FlagBuilder};
 pub use data_source::{DataSource, FileDataSource};
 use std::sync::Arc;
 
@@ -30,13 +30,14 @@ mod tests {
         let data_source: FileDataSource = FileDataSource::new("Cargo.toml").unwrap();
         let offset: usize = 0;
         let length: usize = 1;
+        let read_flags = FlagBuilder::new().toggle_read();
 
         let ds_arc = Arc::new(data_source);
 
-        let addr = addr_space.add_mapping(ds_arc.clone(), offset, length).unwrap();
+        let addr = addr_space.add_mapping(ds_arc.clone(), offset, length, read_flags).unwrap();
         assert!(addr != 0);
 
-        let addr2 = addr_space.add_mapping(ds_arc.clone(), address_space::PAGE_SIZE, length).unwrap();
+        let addr2 = addr_space.add_mapping(ds_arc.clone(), address_space::PAGE_SIZE, length, read_flags).unwrap();
         assert!(addr2 != 0);
         assert!(addr != addr2);
         
@@ -53,16 +54,17 @@ mod tests {
         let data_source: FileDataSource = FileDataSource::new("Cargo.toml").unwrap();
         let offset: usize = 0;
         let length: usize = 1;
+        let read_flags = FlagBuilder::new().toggle_read();
 
         let ds_arc = Arc::new(data_source);
 
-        let addr = addr_space.add_mapping_at(ds_arc.clone(), offset, length, address_space::PAGE_SIZE + 1);
+        let addr = addr_space.add_mapping_at(ds_arc.clone(), offset, length, address_space::PAGE_SIZE + 1, read_flags);
         match addr {
           Ok(_) => println!("First address added successfully."),
           Err(e) => panic!("{}", e),
         }
 
-        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, 2 * address_space::PAGE_SIZE + 3);
+        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, 2 * address_space::PAGE_SIZE + 3, read_flags);
         match addr2 {
           Ok(_) => println!("Second address added successfully."),
           Err(e) => panic!("{}", e),
@@ -75,16 +77,17 @@ mod tests {
         let data_source: FileDataSource = FileDataSource::new("Cargo.toml").unwrap();
         let offset: usize = 0;
         let length: usize = 1;
+        let read_flags = FlagBuilder::new().toggle_read();
 
         let ds_arc = Arc::new(data_source);
 
-        let addr = addr_space.add_mapping_at(ds_arc.clone(), offset, length, address_space::PAGE_SIZE + 1);
+        let addr = addr_space.add_mapping_at(ds_arc.clone(), offset, length, address_space::PAGE_SIZE + 1, read_flags);
         match addr {
           Ok(_) => println!("First address added successfully."),
           Err(e) => panic!("{}", e),
         }
 
-        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, address_space::PAGE_SIZE + 1);
+        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, address_space::PAGE_SIZE + 1, read_flags);
         assert!(addr2.is_err())
     }   
 
@@ -94,10 +97,11 @@ mod tests {
         let data_source: FileDataSource = FileDataSource::new("Cargo.toml").unwrap();
         let offset: usize = 0;
         let length: usize = 1;
+        let read_flags = FlagBuilder::new().toggle_read();
 
         let ds_arc = Arc::new(data_source);
 
-        let addr = addr_space.add_mapping_at(ds_arc.clone(), offset, length, address_space::PAGE_SIZE + 1);
+        let addr = addr_space.add_mapping_at(ds_arc.clone(), offset, length, address_space::PAGE_SIZE + 1, read_flags);
         match addr {
           Ok(_) => println!("First address added successfully."),
           Err(e) => panic!("{}", e),
@@ -109,7 +113,7 @@ mod tests {
           Err(e) => panic!("{}", e),
         }
 
-        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, address_space::PAGE_SIZE + 1);
+        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, address_space::PAGE_SIZE + 1, read_flags);
         match addr2 {
           Ok(_) => println!("Second address added successfully."),
           Err(e) => panic!("{}", e),
@@ -122,16 +126,17 @@ mod tests {
         let data_source: FileDataSource = FileDataSource::new("Cargo.toml").unwrap();
         let offset: usize = 0;
         let length: usize = 1;
+        let read_flags = FlagBuilder::new().toggle_read();
 
         let ds_arc = Arc::new(data_source);
 
-        let addr = addr_space.add_mapping_at(ds_arc.clone(), offset, length, address_space::PAGE_SIZE + 1);
+        let addr = addr_space.add_mapping_at(ds_arc.clone(), offset, length, address_space::PAGE_SIZE + 1, read_flags);
         match addr {
           Ok(_) => println!("First address added successfully."),
           Err(e) => panic!("{}", e),
         }
 
-        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, usize::MAX - address_space::PAGE_SIZE - 1);
+        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, usize::MAX - address_space::PAGE_SIZE - 1, read_flags);
         match addr2 {
           Ok(_) => println!("Second address added successfully."),
           Err(e) => panic!("{}", e),

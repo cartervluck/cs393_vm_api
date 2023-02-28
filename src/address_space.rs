@@ -12,6 +12,20 @@ struct MapEntry {
     offset: usize,
     span: usize,
     addr: usize,
+    flags: FlagBuilder,
+}
+
+impl MapEntry {
+    #[must_use]
+    pub fn new(source: Arc<dyn DataSource>, offset: usize, span: usize, addr: usize, flags: FlagBuilder) -> MapEntry {
+      MapEntry {
+        source: source.clone(),
+        offset,
+        span,
+        addr,
+        flags,
+      }
+    }
 }
 
 /// An address space.
@@ -49,6 +63,7 @@ impl AddressSpace {
         source: Arc<D>,
         offset: usize,
         span: usize,
+        flags: FlagBuilder,
     ) -> Result<VirtualAddress, &str> {
         let mut curs = self.mappings.cursor_front_mut();
         let empty: bool = curs.current().is_none(); // curs starts pointing at first entry, only None if LL is empty
@@ -82,12 +97,13 @@ impl AddressSpace {
           0
         };
         if next_addr - this_ending >= span + 2 * PAGE_SIZE || empty {
-          let address = MapEntry {
-            source: source.clone(),
-            offset: offset,
-            span: span,
-            addr: this_ending + PAGE_SIZE,
-          };
+          let address = MapEntry::new(
+            source,
+            offset,
+            span,
+            this_ending + PAGE_SIZE,
+            flags
+          );
           curs.insert_after(address);
           Ok(this_ending + PAGE_SIZE)
         } else {
@@ -107,6 +123,7 @@ impl AddressSpace {
         offset: usize,
         span: usize,
         start: VirtualAddress,
+        flags: FlagBuilder
     ) -> Result<(), &str> {
         let mut curs = self.mappings.cursor_front_mut();
         let empty: bool = curs.current().is_none();
@@ -138,12 +155,13 @@ impl AddressSpace {
           println!("{}",next_start);
           Err("Insufficient free memory in desired region.") 
         } else {
-          let new_map = MapEntry {
-            source: source.clone(),
-            offset: offset,
-            span: span,
-            addr: start,
-          };
+          let new_map = MapEntry::new(
+            source,
+            offset,
+            span,
+            start,
+            flags
+          );
           curs.insert_after(new_map);
           Ok(())
         }
@@ -189,7 +207,12 @@ impl AddressSpace {
         &self,
         addr: VirtualAddress,
         access_type: FlagBuilder
-    ) -> Result<(&D, usize), &str> {
+    ) -> Result<(Arc<D>, usize), &str> {
+        todo!();
+    }
+
+    /// Helper function for looking up mappings
+    fn get_mapping_for_addr(&self, addr: VirtualAddress) -> Result<MapEntry, &str> {
         todo!();
     }
 }
@@ -216,6 +239,25 @@ pub struct FlagBuilder {
     cow: bool,
     private: bool,
     shared: bool,
+}
+
+impl FlagBuilder {
+    pub fn check_access_perms(&self, access_perms: FlagBuilder) -> bool {
+        if access_perms.read && !self.read || access_perms.write && !self.write || access_perms.execute && !self.execute {
+            return false;
+        }    
+        true    
+    }
+
+    pub fn is_valid(&self) -> bool {
+        if self.private && self.shared {
+            return false;
+        }
+        if self.cow && self.write { // for COW to work, write needs to be off until after the copy
+            return false;
+        }
+        return true;
+    }
 }
 
 /// Create a constructor and toggler for a `FlagBuilder` object. Will capture attributes, including documentation

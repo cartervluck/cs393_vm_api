@@ -1,4 +1,4 @@
-use linked_list::LinkedList;
+use std::collections::LinkedList;
 use std::sync::Arc;
 
 use crate::data_source::DataSource;
@@ -50,44 +50,50 @@ impl AddressSpace {
         offset: usize,
         span: usize,
     ) -> Result<VirtualAddress, &str> {
-        let mut curs = self.mappings.cursor();
-        while curs.peek_next().is_some() {
-          let last_ending: usize = if curs.peek_prev().is_some() {
-            let entry = curs.peek_prev().expect("Bad things are happening.");
+        let mut curs = self.mappings.cursor_front_mut();
+        let empty: bool = curs.current().is_none(); // curs starts pointing at first entry, only None if LL is empty
+        while curs.current().is_some() {
+          let this_ending: usize = {
+            let entry = curs.current().expect("Bad things are happening.");
             entry.addr + entry.span
-          } else {
-            0
           };
-          let next_mapping = curs.peek_next().expect("Bad things are happening.");
-          if next_mapping.addr - last_ending <= span {
+          let next_address = if curs.peek_next().is_some() {
+            curs.peek_next().expect("Bad things are happening.").addr
+          } else {
+            usize::MAX
+          };
+          //println!("{}",this_ending);
+          //println!("{}",next_address);
+          if next_address - this_ending >= span + 2 * PAGE_SIZE {
             break;
           }
-          curs.next();
+          curs.move_next();
         }
         let next_addr: usize = if curs.peek_next().is_some() {
           let entry = curs.peek_next().expect("Bad things are happening.");
           entry.addr
         } else {
-          0 // What is the size of the address space? Max usize? 
+          usize::MAX // What is the size of the address space? Max usize? 
         };
-        let last_ending: usize = if curs.peek_prev().is_some() {
-          let entry = curs.peek_prev().expect("Bad things are happening.");
+        let this_ending: usize = if curs.current().is_some() {
+          let entry = curs.current().expect("Bad things are happening.");
           entry.addr + entry.span
         } else {
           0
         };
-        if next_addr.wrapping_sub(last_ending) >= span + 2 * PAGE_SIZE || last_ending == 0 {
-          // next_addr >= last_ending except in the case where next_addr = 0
+        if next_addr - this_ending >= span + 2 * PAGE_SIZE || empty {
           let address = MapEntry {
             source: source.clone(),
             offset: offset,
             span: span,
-            addr: last_ending + PAGE_SIZE,
+            addr: this_ending + PAGE_SIZE,
           };
-          curs.insert(address);
-          Ok(last_ending + PAGE_SIZE)
+          curs.insert_after(address);
+          Ok(this_ending + PAGE_SIZE)
         } else {
-          Err("No memory chunk available. Ended with between addresses {last_ending} and {next_addr}")
+          println!("{}",this_ending);
+          println!("{}",next_addr);
+          Err("No memory chunk available.")
         }
     }
 
@@ -102,30 +108,35 @@ impl AddressSpace {
         span: usize,
         start: VirtualAddress,
     ) -> Result<(), &str> {
-        let mut curs = self.mappings.cursor();
-        while curs.peek_next().is_some() {
-          let last_start: usize = if curs.peek_prev().is_some() {
-            let entry = curs.peek_prev().expect("Bad things are happening.");
+        let mut curs = self.mappings.cursor_front_mut();
+        let empty: bool = curs.current().is_none();
+        while curs.current().is_some() {
+          let last_addr = {
+            let entry = curs.current().expect("Bad things are happening.");
             entry.addr
-          } else {
-            0
           };
-          let next_mapping = curs.peek_next().expect("Bad things are happening.");
-          if next_mapping.addr > start && last_start < start {
+          let next_addr = if curs.peek_next().is_some() {
+            curs.peek_next().expect("Bad things are happening.").addr
+          } else {
+            usize::MAX
+          };
+          if next_addr > start && last_addr < start {
             break;
           }
-          curs.next();
+          curs.move_next();
         }
         let next_start = match curs.peek_next() {
           Some(x) => x.addr,
-          None => 0,
+          None => usize::MAX,
         };
-        let prev_end = match curs.peek_prev() {
+        let prev_end = match curs.current() {
           Some(x) => x.addr + x.span,
           None => 0,
         };
-        if prev_end >= start - PAGE_SIZE || (next_start < start + span + PAGE_SIZE && next_start != 0) {
-          Err("Insufficient free memory in desired region.")
+        if prev_end >= start - PAGE_SIZE || (next_start < start + span + PAGE_SIZE && !empty) {
+          println!("{}",prev_end);
+          println!("{}",next_start);
+          Err("Insufficient free memory in desired region.") 
         } else {
           let new_map = MapEntry {
             source: source.clone(),
@@ -133,7 +144,7 @@ impl AddressSpace {
             span: span,
             addr: start,
           };
-          curs.insert(new_map);
+          curs.insert_after(new_map);
           Ok(())
         }
     }
@@ -147,22 +158,22 @@ impl AddressSpace {
         source: Arc<D>,
         start: VirtualAddress,
     ) -> Result<(), &str> {
-        let mut curs = self.mappings.cursor();
-        while curs.peek_next().is_some() {
-          let next_mapping = curs.peek_next().expect("Bad things are happening.");
-          if next_mapping.addr == start {
+        let mut curs = self.mappings.cursor_front_mut();
+        while curs.current().is_some() {
+          let this_mapping = curs.current().expect("Bad things are happening.");
+          if this_mapping.addr == start {
             break;
           }
-          curs.next();
+          curs.move_next();
         }
-        let mapping = curs.peek_next();
+        let mapping = curs.current();
         if mapping.is_none() {
           Err("No mapping with target address.")
         } else {
           if mapping.unwrap().addr != start {
             Err("No mapping with target address.")
           } else {
-            curs.remove();
+            curs.remove_current();
             Ok(()) //Do we have to drop a reference??
           }
         }

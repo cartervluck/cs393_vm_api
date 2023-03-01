@@ -54,6 +54,14 @@ impl AddressSpace {
         }
     }
 
+    fn round_up(addr: VirtualAddress) -> VirtualAddress {
+        let floor = addr / PAGE_SIZE;
+        match floor * PAGE_SIZE {
+          addr => addr,
+          _ => (floor + 1) * PAGE_SIZE,
+        }
+    }
+
     /// Add a mapping from a `DataSource` into this `AddressSpace`.
     ///
     /// # Errors
@@ -65,6 +73,7 @@ impl AddressSpace {
         span: usize,
         flags: FlagBuilder,
     ) -> Result<VirtualAddress, &str> {
+        let span = round_up(span);
         let mut curs = self.mappings.cursor_front_mut();
         let empty: bool = curs.current().is_none(); // curs starts pointing at first entry, only None if LL is empty
         while curs.current().is_some() {
@@ -125,6 +134,7 @@ impl AddressSpace {
         start: VirtualAddress,
         flags: FlagBuilder
     ) -> Result<(), &str> {
+        let span = round_up(span);
         let mut curs = self.mappings.cursor_front_mut();
         let empty: bool = curs.current().is_none();
         while curs.current().is_some() {

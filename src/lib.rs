@@ -64,7 +64,7 @@ mod tests {
           Err(e) => panic!("{}", e),
         }
 
-        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, 2 * address_space::PAGE_SIZE + 3, read_flags);
+        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, 3 * address_space::PAGE_SIZE + 3, read_flags);
         match addr2 {
           Ok(_) => println!("Second address added successfully."),
           Err(e) => panic!("{}", e),
@@ -113,7 +113,7 @@ mod tests {
           Err(e) => panic!("{}", e),
         }
 
-        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, address_space::PAGE_SIZE + 1, read_flags);
+        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, 3 * address_space::PAGE_SIZE + 1, read_flags);
         match addr2 {
           Ok(_) => println!("Second address added successfully."),
           Err(e) => panic!("{}", e),
@@ -136,7 +136,7 @@ mod tests {
           Err(e) => panic!("{}", e),
         }
 
-        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, usize::MAX - address_space::PAGE_SIZE - 1, read_flags);
+        let addr2 = addr_space.add_mapping_at(ds_arc.clone(), address_space::PAGE_SIZE, length, usize::MAX - 2 * address_space::PAGE_SIZE - 1, read_flags);
         match addr2 {
           Ok(_) => println!("Second address added successfully."),
           Err(e) => panic!("{}", e),
@@ -165,7 +165,7 @@ mod tests {
           Err(e) => panic!("{}", e),
         }
 
-        let addr2 = addr_space.add_mapping_at(fds_arc2.clone(), offset, length, 2 * address_space::PAGE_SIZE + 3, read_flags);
+        let addr2 = addr_space.add_mapping_at(fds_arc2.clone(), offset, length, 3 * address_space::PAGE_SIZE + 3, read_flags);
         match addr2 {
           Ok(_) => println!("Second address added successfully."),
           Err(e) => panic!("{}", e),
@@ -177,7 +177,7 @@ mod tests {
           Err(e) => panic!("{}", e),
         }
  
-        let result2 = addr_space.get_source_for_addr::<FileDataSource>(2 * address_space::PAGE_SIZE + 3, read_flags);
+        let result2 = addr_space.get_source_for_addr::<FileDataSource>(3 * address_space::PAGE_SIZE + 3, read_flags);
         match result2 {
           Ok((source_result, offset_result)) => println!("TODO: Arc comparison"),
           Err(e) => panic!("{}", e),

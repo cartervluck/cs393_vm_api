@@ -185,15 +185,11 @@ impl AddressSpace {
           curs.move_next();
         }
         let mapping = curs.current();
-        if mapping.is_none() {
+        if mapping.is_none() ||  mapping.unwrap().addr != start {
           Err("No mapping with target address.")
         } else {
-          if mapping.unwrap().addr != start {
-            Err("No mapping with target address.")
-          } else {
-            curs.remove_current();
-            Ok(()) //Do we have to drop a reference??
-          }
+          curs.remove_current();
+          Ok(()) //Do we have to drop a reference??
         }
     }
 
@@ -256,7 +252,7 @@ impl FlagBuilder {
         if self.cow && self.write { // for COW to work, write needs to be off until after the copy
             return false;
         }
-        return true;
+        true
     }
 }
 

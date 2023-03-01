@@ -203,13 +203,26 @@ impl AddressSpace {
         &self,
         addr: VirtualAddress,
         access_type: FlagBuilder
-    ) -> Result<(Arc<D>, usize), &str> {
-        todo!();
+    ) -> Result<(Arc<dyn DataSource>, usize), &str> {
+        let mapping = self.get_mapping_for_addr(addr).expect("No mapping with target address.");
+        let but_not_flags = access_type.but_not(mapping.flags);
+        let any_disallowed = but_not_flags.read || but_not_flags.write || but_not_flags.execute || but_not_flags.cow || but_not_flags.private || but_not_flags.shared;
+        match any_disallowed {
+          true => Err("Given access type is not allowed for the data source at target address."),
+          false => Ok((mapping.source.clone(), mapping.offset)),
+        }
     }
 
     /// Helper function for looking up mappings
-    fn get_mapping_for_addr(&self, addr: VirtualAddress) -> Result<MapEntry, &str> {
-        todo!();
+    fn get_mapping_for_addr(&self, addr: VirtualAddress) -> Result<&MapEntry, &str> {
+        let mut curs = self.mappings.cursor_front();
+        while curs.current().is_some() && curs.current().expect("Bad things are happening.").addr < addr {
+          curs.move_next();
+        }
+        match curs.current() {
+          Some(addr) => Ok(curs.current().expect("Bad things are happening.")),
+          _ => Err("No mapping with target address."),
+        }
     }
 }
 

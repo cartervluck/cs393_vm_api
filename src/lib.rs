@@ -141,5 +141,46 @@ mod tests {
           Ok(_) => println!("Second address added successfully."),
           Err(e) => panic!("{}", e),
         }
-    } 
+    }
+
+    #[test]
+    fn get_source_valid() {
+        let mut addr_space = AddressSpace::new("Test address space");
+        let data_source = FileDataSource::new("Cargo.toml").unwrap();
+        let data_source2 = FileDataSource::new("README.md").unwrap();
+        let offset: usize = 0;
+        let length: usize = 1;
+        let read_flags = FlagBuilder::new().toggle_read();
+
+        let fds_arc = Arc::new(data_source);
+        let fds_arc2 = Arc::new(data_source2);
+
+        let ds_arc: Arc<dyn DataSource> = fds_arc.clone();
+
+        let ds_arc2: Arc<dyn DataSource> = fds_arc2.clone();
+
+        let addr = addr_space.add_mapping_at(fds_arc.clone(), offset, length, address_space::PAGE_SIZE + 1, read_flags);
+        match addr {
+          Ok(_) => println!("First address added successfully."),
+          Err(e) => panic!("{}", e),
+        }
+
+        let addr2 = addr_space.add_mapping_at(fds_arc2.clone(), offset, length, 2 * address_space::PAGE_SIZE + 3, read_flags);
+        match addr2 {
+          Ok(_) => println!("Second address added successfully."),
+          Err(e) => panic!("{}", e),
+        }
+
+        let result = addr_space.get_source_for_addr::<FileDataSource>(address_space::PAGE_SIZE + 1, read_flags);
+        match result {
+          Ok((source_result, offset_result)) => println!("TODO: Arc comparison"),
+          Err(e) => panic!("{}", e),
+        }
+ 
+        let result2 = addr_space.get_source_for_addr::<FileDataSource>(2 * address_space::PAGE_SIZE + 3, read_flags);
+        match result2 {
+          Ok((source_result, offset_result)) => println!("TODO: Arc comparison"),
+          Err(e) => panic!("{}", e),
+        }
+    }
 }
